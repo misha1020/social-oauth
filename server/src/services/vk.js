@@ -1,20 +1,12 @@
-async function exchangeCode({ code, codeVerifier, deviceId, redirectUri, clientId, clientSecret }) {
-  const body = new URLSearchParams({
-    grant_type: 'authorization_code',
-    code,
-    code_verifier: codeVerifier,
-    device_id: deviceId,
-    redirect_uri: redirectUri,
+async function exchangeCode({ code, redirectUri, clientId, clientSecret }) {
+  const params = new URLSearchParams({
     client_id: clientId,
     client_secret: clientSecret,
+    redirect_uri: redirectUri,
+    code,
   });
 
-  const res = await fetch('https://id.vk.com/oauth2/auth', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: body.toString(),
-  });
-
+  const res = await fetch(`https://oauth.vk.com/access_token?${params.toString()}`);
   const data = await res.json();
 
   if (data.error) {
@@ -24,27 +16,26 @@ async function exchangeCode({ code, codeVerifier, deviceId, redirectUri, clientI
   return {
     accessToken: data.access_token,
     userId: data.user_id,
-    idToken: data.id_token,
   };
 }
 
-async function fetchUserProfile(accessToken, clientId) {
-  const body = new URLSearchParams({
+async function fetchUserProfile(accessToken) {
+  const params = new URLSearchParams({
     access_token: accessToken,
-    client_id: clientId,
+    fields: 'first_name,last_name',
+    v: '5.131',
   });
 
-  const res = await fetch('https://id.vk.com/oauth2/user_info', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: body.toString(),
-  });
-
+  const res = await fetch(`https://api.vk.com/method/users.get?${params.toString()}`);
   const data = await res.json();
-  const user = data.user;
 
+  if (data.error) {
+    throw new Error(data.error.error_msg || 'VK API error');
+  }
+
+  const user = data.response[0];
   return {
-    vkId: Number(user.user_id),
+    vkId: user.id,
     firstName: user.first_name,
     lastName: user.last_name,
   };

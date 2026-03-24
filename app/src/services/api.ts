@@ -21,8 +21,6 @@ interface MeResponse {
 
 export async function loginWithVK(params: {
   code: string;
-  codeVerifier: string;
-  deviceId: string;
   redirectUri: string;
 }): Promise<AuthResponse> {
   const res = await fetch(`${API_URL}/auth/vk`, {

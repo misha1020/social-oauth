@@ -2,7 +2,7 @@
   "expo": {
     "name": "VK OAuth Demo",
     "slug": "vk-oauth-demo",
-    "scheme": "vkoauth",
+    "scheme": ["vkoauth", "vk54501952"],
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

@@ -17,8 +17,6 @@ interface AuthState {
   error: string | null;
   login: (params: {
     code: string;
-    codeVerifier: string;
-    deviceId: string;
     redirectUri: string;
   }) => Promise<void>;
   logout: () => Promise<void>;
@@ -62,8 +60,6 @@ export function useAuthProvider() {
 
   const login = useCallback(async (params: {
     code: string;
-    codeVerifier: string;
-    deviceId: string;
     redirectUri: string;
   }) => {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));

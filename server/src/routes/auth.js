@@ -9,26 +9,24 @@ function createAuthRoutes({ jwtSecret, vkAppId, vkAppSecret, usersFile }) {
   const authMiddleware = createAuthMiddleware(jwtSecret);
 
   router.post('/vk', async (req, res) => {
-    const { code, codeVerifier, deviceId, redirectUri } = req.body;
+    const { code, redirectUri } = req.body;
 
-    if (!code || !codeVerifier || !deviceId || !redirectUri) {
+    if (!code || !redirectUri) {
       return res.status(400).json({
         error: 'missing_fields',
-        message: 'code, codeVerifier, deviceId, redirectUri are required',
+        message: 'code and redirectUri are required',
       });
     }
 
     try {
       const { accessToken } = await exchangeCode({
         code,
-        codeVerifier,
-        deviceId,
         redirectUri,
         clientId: vkAppId,
         clientSecret: vkAppSecret,
       });
 
-      const profile = await fetchUserProfile(accessToken, vkAppId);
+      const profile = await fetchUserProfile(accessToken);
       const user = createUser(profile, usersFile);
 
       const token = jwt.sign(
