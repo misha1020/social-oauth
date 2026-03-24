@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri, useAuthRequest } from 'expo-auth-session';
 import { VK_CLIENT_ID } from '../config';
@@ -10,6 +10,15 @@ const discovery = {
   tokenEndpoint: 'https://id.vk.com/oauth2/auth',
 };
 
+function generateDeviceId(): string {
+  const chars = 'abcdef0123456789';
+  let result = '';
+  for (let i = 0; i < 32; i++) {
+    result += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return result;
+}
+
 export interface VKAuthResult {
   code: string;
   codeVerifier: string;
@@ -20,6 +29,8 @@ export interface VKAuthResult {
 export function useVKAuth(onSuccess: (result: VKAuthResult) => void) {
   const onSuccessRef = useRef(onSuccess);
   onSuccessRef.current = onSuccess;
+
+  const deviceId = useMemo(() => generateDeviceId(), []);
 
   const redirectUri = makeRedirectUri({
     scheme: 'vkoauth',
@@ -33,6 +44,10 @@ export function useVKAuth(onSuccess: (result: VKAuthResult) => void) {
       redirectUri,
       usePKCE: true,
       responseType: 'code',
+      extraParams: {
+        device_id: deviceId,
+        app_id: VK_CLIENT_ID,
+      },
     },
     discovery
   );
@@ -43,11 +58,11 @@ export function useVKAuth(onSuccess: (result: VKAuthResult) => void) {
       onSuccessRef.current({
         code,
         codeVerifier: request.codeVerifier,
-        deviceId: device_id || '',
+        deviceId: device_id || deviceId,
         redirectUri,
       });
     }
-  }, [response, request, redirectUri]);
+  }, [response, request, redirectUri, deviceId]);
 
   return {
     promptAsync,
