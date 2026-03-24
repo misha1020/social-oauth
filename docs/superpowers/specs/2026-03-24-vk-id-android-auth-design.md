@@ -1,7 +1,7 @@
 # VK ID Android Auth Without SDK — Design Spec
 
 **Date:** 2026-03-24
-**Status:** Approved
+**Status:** Implemented
 **Replaces:** `2026-03-24-vk-oauth-server-callback-design.md`
 
 ---
@@ -21,10 +21,11 @@ VK's documentation for Android auth without SDK (`id.vk.ru`) describes a native 
 ```
 App                           VK                   Server
  │                              │                      │
- │  Generate:                   │                      │
+ │  Generate (expo-crypto):     │                      │
  │    code_verifier (random)    │                      │
  │    code_challenge (SHA-256)  │                      │
  │    state (random)            │                      │
+ │  Store PKCE at module level  │                      │
  │                              │                      │
  │  WebBrowser.openAuthSessionAsync                    │
  │  → id.vk.ru/authorize        │                      │
@@ -41,13 +42,14 @@ App                           VK                   Server
  │      code=...                │                      │
  │      state=...               │                      │
  │      device_id=...           │                      │
- │      type=code_v2            │                      │
  │                              │                      │
+ │  Deep link → Expo Router     │                      │
+ │  +not-found.tsx catches it   │                      │
  │  Verify state matches        │                      │
  │                              │                      │
  │  POST /auth/vk/exchange ─────────────────────────►  │
- │  { code, codeVerifier,       │  POST id.vk.ru/      │
- │    deviceId }                │  oauth2/auth         │
+ │  { code, code_verifier,      │  POST id.vk.ru/      │
+ │    device_id }  (snake_case) │  oauth2/auth         │
  │                              │◄─────────────────────│
  │                              │── access_token ─────►│
  │                              │  POST user_info       │
@@ -61,6 +63,17 @@ App                           VK                   Server
  │  navigate /home              │                      │
 ```
 
+### Deep Link Handling (Android-specific)
+
+`WebBrowser.openAuthSessionAsync` does NOT reliably intercept the VK redirect on Android. When VK redirects to `vk54501952://vk.ru/blank.html?code=...`, the deep link arrives at Expo Router, which can't match any file-system route. The solution:
+
+1. **`+not-found.tsx`** catches the unmatched deep link
+2. Reads VK callback params (`code`, `device_id`, `state`) via `useGlobalSearchParams`
+3. Retrieves PKCE from module-level storage in `useVKAuth.ts`
+4. Exchanges code with server, logs in, navigates to `/home`
+
+PKCE params are stored at module level (not in React state) so they survive the component remount when Expo Router navigates away from `/login` to `+not-found`.
+
 ---
 
 ## VK Console Setup
@@ -70,34 +83,32 @@ App                           VK                   Server
 
 ---
 
-## Server Changes
+## Server
 
-### New endpoint: `POST /auth/vk/exchange`
+### `POST /auth/vk/exchange`
 
 Replaces `GET /auth/vk/callback`.
 
-**Request body:**
+**Request body (snake_case to match VK convention):**
 ```json
-{ "code": "...", "codeVerifier": "...", "deviceId": "..." }
+{ "code": "...", "code_verifier": "...", "device_id": "..." }
 ```
 
+Server destructures with rename: `{ code, code_verifier: codeVerifier, device_id: deviceId }`.
+
 **Success flow:**
-1. Validate `code`, `codeVerifier`, `deviceId` present — else 400
+1. Validate `code`, `code_verifier`, `device_id` present — else 400
 2. `exchangeCode({ code, codeVerifier, deviceId, redirectUri: 'vk54501952://vk.ru/blank.html', clientId })`
-3. `fetchUserProfile(accessToken)`
+3. `fetchUserProfile(accessToken, clientId, deviceId)`
 4. `createUser(profile)`
 5. Sign JWT (7d)
 6. Return `{ token }`
 
-**Error responses:** JSON `{ error, message }` — 400 for missing fields, 401 for VK rejection, 500 for unexpected errors.
-
-### Removed: `GET /auth/vk/callback`
-
-No longer needed — redirect is handled natively by the Android app.
+**Error responses:** JSON `{ error, message }` — 400 for missing fields, 401 for VK rejection.
 
 ### `GET /auth/me` — unchanged
 
-### `vk.js` changes
+### `vk.js`
 
 **`exchangeCode`:**
 - `POST https://id.vk.ru/oauth2/auth`
@@ -107,58 +118,61 @@ No longer needed — redirect is handled natively by the Android app.
 
 **`fetchUserProfile`:**
 - `POST https://id.vk.ru/oauth2/user_info`
-- Params: `access_token`, `client_id`
+- Params: `access_token`, `device_id`; `client_id` as query param
 - Returns `{ vkId, firstName, lastName }`
 
 ---
 
-## App Changes
+## App
 
-### `app.json` — intent filter
+### `app.json`
 
-Add to `android.intentFilters`:
-```json
-{
-  "action": "VIEW",
-  "autoVerify": true,
-  "data": [{ "scheme": "vk54501952", "host": "vk.ru" }],
-  "category": ["BROWSABLE", "DEFAULT"]
-}
-```
+- Schemes: `["vkoauth", "vk54501952"]`
+- Intent filter: `vk54501952://vk.ru` with `BROWSABLE` + `DEFAULT` categories
 
-Requires prebuild after this change.
+### `useVKAuth.ts`
 
-### `useVKAuth.ts` — rewritten
+Uses **`expo-crypto`** (not `crypto.subtle` — Hermes doesn't support it):
+- `Crypto.getRandomValues()` for random bytes
+- `Crypto.digestStringAsync(SHA256, ..., BASE64)` for code challenge
 
-1. Generate `code_verifier` (32 random bytes, base64url)
-2. Generate `code_challenge` (`base64url(SHA-256(code_verifier))` via `crypto.subtle`)
-3. Generate `state` (random string for CSRF)
-4. Build `oauth2_params = base64(scope="email")`
-5. Build auth URL: `id.vk.ru/authorize?client_id=...&redirect_uri=vk54501952://vk.ru/blank.html?oauth2_params=...&code_challenge=...&code_challenge_method=S256&state=...&response_type=code`
-6. `WebBrowser.openAuthSessionAsync(authUrl, 'vk54501952://')`
-7. On `result.type === 'success'`: parse `code`, `device_id`, `state` from URL
-8. Verify `state` matches — error if not
-9. Call `exchangeVKCode({ code, codeVerifier, deviceId })` from `api.ts`
-10. Call `onSuccess({ token })`
+Module-level PKCE storage exported via `getStoredPKCE()` / `clearStoredPKCE()`.
 
-Returns: `{ promptAsync, isLoading, isReady: true, error }`
+Two code paths for handling the VK redirect:
+1. **Fast path:** `openAuthSessionAsync` returns `{ type: 'success', url }` — process directly in the hook
+2. **Fallback path (Android):** Deep link goes to Expo Router → `+not-found.tsx` handles it using stored PKCE
 
-### `api.ts` — add `exchangeVKCode`
+### `+not-found.tsx`
 
-```ts
-export async function exchangeVKCode(params: {
-  code: string;
-  codeVerifier: string;
-  deviceId: string;
-}): Promise<{ token: string }>
-// POST /auth/vk/exchange
-```
+Catches VK redirect deep links that Expo Router can't match:
+- Detects VK callback via `code` + `device_id` in search params
+- Retrieves PKCE from module-level storage
+- Validates state, exchanges code, logs in, navigates to `/home`
+- Shows error with "Back to login" button on failure
+- Non-VK 404s redirect to `/`
 
-`getMe` unchanged.
+### `api.ts`
 
-### No changes needed
+`exchangeVKCode` sends **snake_case** keys (`code_verifier`, `device_id`) to match VK convention. Includes 15-second `AbortController` timeout.
 
-`useAuth.ts`, `login.tsx`, `config.ts` — all unchanged.
+### `config.ts`
+
+- `API_URL` — `http://192.168.87.125:5173` for local testing, `https://mz.ludentes.ru` for production
+- `VK_CLIENT_ID` — `'54501952'`
+
+### `AndroidManifest.xml`
+
+- `android:usesCleartextTraffic="true"` — required for HTTP during local testing
+
+---
+
+## Known Limitations
+
+1. **VK "One tap sign-in" modal** — appears when VK app is installed on device. Cannot be suppressed via OAuth parameters (`prompt=login`, `display=page` both tested, neither works). User must dismiss it or tap "Enter info manually".
+
+2. **Cloudflare blocks React Native fetch** — React Native's OkHttp client is blocked by Cloudflare when hitting `mz.ludentes.ru`. Local IP (`http://192.168.87.125:5173`) works. Production deployment needs Cloudflare bypass (e.g., whitelist the app's user agent, or use Cloudflare tunnel with skip-challenge rules).
+
+3. **`client_id` placement in `fetchUserProfile`** — currently sent as query param. VK may expect it in POST body. Verify during E2E testing.
 
 ---
 
@@ -166,22 +180,23 @@ export async function exchangeVKCode(params: {
 
 | Scenario | Caught by | Result |
 |---|---|---|
-| User cancels browser | `useVKAuth` (`result.type === 'cancel'/'dismiss'`) | No-op, stay on login |
-| State mismatch | `useVKAuth` | Error shown on login screen |
-| `POST /auth/vk/exchange` fails | `useVKAuth` | Error shown on login screen |
-| VK rejects code | Server returns 401 JSON | App shows error message |
+| User cancels browser | `useVKAuth` (`result.type !== 'success'`) | Loading reset, stay on login |
+| State mismatch | `+not-found.tsx` | Error shown with "Back to login" |
+| Auth session expired (PKCE lost) | `+not-found.tsx` | Error shown with "Back to login" |
+| Server unreachable | `+not-found.tsx` (AbortController 15s) | "Aborted" error shown |
+| VK rejects code | Server returns 401 JSON | Error shown |
 | `GET /auth/me` fails on startup | `useAuth.checkAuth` | Token deleted, stay on login |
 
 ---
 
 ## Testing
 
-**Server (Jest + supertest):**
+**Server (Jest + supertest, 19 tests pass):**
 - `POST /auth/vk/exchange`: success case, missing fields (400), VK exchange failure (401)
 - `GET /auth/me`: valid token, missing token (401)
 - `vk.js`: `exchangeCode` POSTs to `id.vk.ru/oauth2/auth`, throws on error; `fetchUserProfile` POSTs to `id.vk.ru/oauth2/user_info`
 
-**App:** No automated tests — verified manually on device after APK rebuild.
+**App:** Manual E2E testing on device — VK web login flow works with local server.
 
 ---
 
@@ -191,3 +206,4 @@ export async function exchangeVKCode(params: {
 - `state` verified client-side to prevent CSRF
 - `device_id` comes from VK (returned in callback) — used in all subsequent requests
 - JWT stored in SecureStore (encrypted)
+- App→server API uses snake_case keys (`code_verifier`, `device_id`) matching VK convention
