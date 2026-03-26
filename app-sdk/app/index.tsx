@@ -1,13 +1,15 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { router } from "expo-router";
 import { useAuth } from "../src/hooks/useAuth";
 
 export default function IndexScreen() {
   const { isLoading, isLoggedIn } = useAuth();
+  const hasNavigated = useRef(false);
 
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && !hasNavigated.current) {
+      hasNavigated.current = true;
       router.replace(isLoggedIn ? "/home" : "/login");
     }
   }, [isLoading, isLoggedIn]);
