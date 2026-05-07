@@ -1,9 +1,11 @@
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
 import { useAuth } from '../src/hooks/useAuth';
+import { getDebugInfo } from '../src/debugStore';
 import { router } from 'expo-router';
 
 export default function HomeScreen() {
   const { user, logout } = useAuth();
+  const debug = getDebugInfo();
 
   const handleLogout = async () => {
     await logout();
@@ -11,7 +13,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Welcome!</Text>
 
       {user && (
@@ -22,10 +24,22 @@ export default function HomeScreen() {
         </View>
       )}
 
+      {debug && (
+        <View style={styles.debugSection}>
+          <Text style={styles.debugTitle}>Auth Debug Info</Text>
+          <Text style={styles.debugLabel}>device_id:</Text>
+          <Text style={styles.debugValue} selectable>{debug.deviceId}</Text>
+          <Text style={styles.debugLabel}>code:</Text>
+          <Text style={styles.debugValue} selectable>{debug.code}</Text>
+          <Text style={styles.debugLabel}>code_verifier:</Text>
+          <Text style={styles.debugValue} selectable>{debug.codeVerifier}</Text>
+        </View>
+      )}
+
       <Pressable style={styles.button} onPress={handleLogout}>
         <Text style={styles.buttonText}>Logout</Text>
       </Pressable>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -62,6 +76,33 @@ const styles = StyleSheet.create({
   info: {
     fontSize: 14,
     color: '#666',
+    marginBottom: 4,
+  },
+  debugSection: {
+    backgroundColor: '#fff3e0',
+    padding: 16,
+    borderRadius: 12,
+    width: '100%',
+    marginBottom: 30,
+    borderWidth: 1,
+    borderColor: '#ffcc80',
+  },
+  debugTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 12,
+    color: '#e65100',
+  },
+  debugLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#bf360c',
+    marginTop: 8,
+  },
+  debugValue: {
+    fontSize: 12,
+    color: '#333',
+    fontFamily: 'monospace',
     marginBottom: 4,
   },
   button: {

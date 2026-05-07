@@ -3,6 +3,7 @@ import * as WebBrowser from "expo-web-browser";
 import * as Crypto from "expo-crypto";
 import { VK_CLIENT_ID } from "../config";
 import { exchangeVKCode } from "../services/api";
+import { setDebugInfo } from "../debugStore";
 
 const REDIRECT_BASE = `vk${VK_CLIENT_ID}://vk.ru/blank.html`;
 
@@ -53,14 +54,20 @@ export interface VKAuthResult {
   token: string;
 }
 
+export interface PKCEParams {
+  codeVerifier: string;
+  codeChallenge: string;
+  state: string;
+}
+
 export function useVKAuth(onSuccess: (result: VKAuthResult) => void) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pkceParams, setPkceParams] = useState<PKCEParams | null>(null);
   const onSuccessRef = useRef(onSuccess);
   onSuccessRef.current = onSuccess;
 
-  const promptAsync = useCallback(async () => {
-    setIsLoading(true);
+  const preparePKCE = useCallback(async () => {
     setError(null);
     try {
       const codeVerifier = await generateCodeVerifier();
@@ -70,6 +77,18 @@ export function useVKAuth(onSuccess: (result: VKAuthResult) => void) {
       const state = base64urlEncode(stateArray);
 
       _storedPKCE = { codeVerifier, state };
+      setPkceParams({ codeVerifier, codeChallenge, state });
+    } catch (err: any) {
+      setError(err.message || "Failed to generate PKCE");
+    }
+  }, []);
+
+  const continueAuth = useCallback(async () => {
+    if (!pkceParams || !_storedPKCE) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const { codeVerifier, codeChallenge, state } = pkceParams;
 
       const oauth2Params = btoa('scope="email"')
         .replace(/\+/g, "-")
@@ -94,7 +113,6 @@ export function useVKAuth(onSuccess: (result: VKAuthResult) => void) {
       );
 
       if (result.type === "success" && result.url) {
-        // openAuthSessionAsync caught the redirect (works on some devices)
         _storedPKCE = null;
         const {
           code,
@@ -111,6 +129,7 @@ export function useVKAuth(onSuccess: (result: VKAuthResult) => void) {
           return;
         }
 
+        setDebugInfo({ code, codeVerifier, deviceId });
         const { token } = await exchangeVKCode({
           code,
           codeVerifier,
@@ -118,9 +137,6 @@ export function useVKAuth(onSuccess: (result: VKAuthResult) => void) {
         });
         onSuccessRef.current({ token });
       } else {
-        // Browser dismissed without capturing redirect.
-        // If VK redirected, Expo Router sends it to +not-found.tsx
-        // which handles the callback using _storedPKCE.
         setIsLoading(false);
       }
     } catch (err: any) {
@@ -128,7 +144,7 @@ export function useVKAuth(onSuccess: (result: VKAuthResult) => void) {
       setError(err.message || "Authentication failed");
       setIsLoading(false);
     }
-  }, []);
+  }, [pkceParams]);
 
-  return { promptAsync, isLoading, isReady: true, error };
+  return { preparePKCE, continueAuth, pkceParams, isLoading, isReady: true, error };
 }

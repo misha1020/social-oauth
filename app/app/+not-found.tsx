@@ -4,6 +4,7 @@ import { router, useGlobalSearchParams } from 'expo-router';
 import { useAuth } from '../src/hooks/useAuth';
 import { exchangeVKCode } from '../src/services/api';
 import { getStoredPKCE, clearStoredPKCE } from '../src/hooks/useVKAuth';
+import { setDebugInfo } from '../src/debugStore';
 
 export default function NotFoundScreen() {
   const params = useGlobalSearchParams<{ code?: string; state?: string; device_id?: string }>();
@@ -34,6 +35,7 @@ export default function NotFoundScreen() {
     }
 
     clearStoredPKCE();
+    setDebugInfo({ code: code!, codeVerifier: pkce.codeVerifier, deviceId: deviceId! });
 
     exchangeVKCode({ code: code!, codeVerifier: pkce.codeVerifier, deviceId: deviceId! })
       .then(async ({ token }) => {
