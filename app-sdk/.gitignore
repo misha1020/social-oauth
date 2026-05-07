@@ -42,3 +42,5 @@ yarn-error.*
 
 # local module build artifacts
 modules/**/android/build/
+
+debug.log
