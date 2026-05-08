@@ -19,7 +19,7 @@ export default function HomeScreen() {
           <Text style={styles.name}>
             {user.firstName} {user.lastName}
           </Text>
-          <Text style={styles.info}>VK ID: {user.vkId}</Text>
+          <Text style={styles.info}>{user.provider}: {user.providerId}</Text>
           <Text style={styles.info}>User ID: {user.id}</Text>
         </View>
       )}

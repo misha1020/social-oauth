@@ -1,5 +1,6 @@
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from "react-native";
 import { useVKSDKAuth } from "../src/hooks/useVKSDKAuth";
+import { useYandexAuth } from "../src/hooks/useYandexAuth";
 import { useAuth } from "../src/hooks/useAuth";
 import { router } from "expo-router";
 import buildVersion from "../build-version.json";
@@ -15,9 +16,17 @@ export default function LoginScreen() {
     await login({ token });
     router.replace("/home");
   });
+  const {
+    authorize: yandexAuthorize,
+    isLoading: yandexLoading,
+    error: yandexError,
+  } = useYandexAuth(async ({ token }) => {
+    await login({ token });
+    router.replace("/home");
+  });
 
-  const isLoading = authLoading || vkLoading;
-  const error = vkError || authError;
+  const isLoading = authLoading || vkLoading || yandexLoading;
+  const error = vkError || yandexError || authError;
 
   return (
     <View style={styles.container}>
@@ -30,10 +39,22 @@ export default function LoginScreen() {
         onPress={() => promptAsync()}
         disabled={!isReady || isLoading}
       >
-        {isLoading ? (
+        {vkLoading ? (
           <ActivityIndicator color="#fff" />
         ) : (
           <Text style={styles.buttonText}>Sign in with VK</Text>
+        )}
+      </Pressable>
+
+      <Pressable
+        style={[styles.yandexButton, isLoading && styles.buttonDisabled]}
+        onPress={() => yandexAuthorize()}
+        disabled={isLoading}
+      >
+        {yandexLoading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>Sign in with Yandex</Text>
         )}
       </Pressable>
     </View>
@@ -60,6 +81,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     minWidth: 200,
     alignItems: "center",
+  },
+  yandexButton: {
+    backgroundColor: "#FC3F1D",
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 8,
+    minWidth: 200,
+    alignItems: "center",
+    marginTop: 12,
   },
   buttonDisabled: {
     opacity: 0.6,

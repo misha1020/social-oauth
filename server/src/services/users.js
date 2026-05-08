@@ -14,25 +14,31 @@ function saveUsers(users, filePath = DEFAULT_FILE) {
 }
 
 function findById(id, filePath = DEFAULT_FILE) {
-  const users = getUsers(filePath);
-  return users.find((u) => u.id === id) || null;
+  return getUsers(filePath).find((u) => u.id === id) || null;
 }
 
-function findByVkId(vkId, filePath = DEFAULT_FILE) {
-  const users = getUsers(filePath);
-  return users.find((u) => u.vkId === vkId) || null;
+function findByProvider(provider, providerId, filePath = DEFAULT_FILE) {
+  return (
+    getUsers(filePath).find(
+      (u) => u.provider === provider && u.providerId === String(providerId)
+    ) || null
+  );
 }
 
-function createUser({ vkId, firstName, lastName }, filePath = DEFAULT_FILE) {
-  const existing = findByVkId(vkId, filePath);
+function createUser(profile, filePath = DEFAULT_FILE) {
+  const { provider, providerId, firstName, lastName, email, avatarId } = profile;
+  const existing = findByProvider(provider, providerId, filePath);
   if (existing) return existing;
 
   const users = getUsers(filePath);
   const user = {
     id: crypto.randomUUID(),
-    vkId,
+    provider,
+    providerId: String(providerId),
     firstName,
     lastName,
+    ...(email ? { email } : {}),
+    ...(avatarId ? { avatarId } : {}),
     createdAt: new Date().toISOString(),
   };
   users.push(user);
@@ -40,4 +46,4 @@ function createUser({ vkId, firstName, lastName }, filePath = DEFAULT_FILE) {
   return user;
 }
 
-module.exports = { getUsers, findById, findByVkId, createUser };
+module.exports = { getUsers, findById, findByProvider, createUser };

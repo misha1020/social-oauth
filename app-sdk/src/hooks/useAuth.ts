@@ -11,9 +11,12 @@ import { TOKEN_KEY } from "../config";
 
 interface User {
   id: string;
-  vkId: number;
+  provider: string;
+  providerId: string;
   firstName: string;
   lastName: string;
+  email?: string;
+  avatarId?: string;
 }
 
 interface AuthState {

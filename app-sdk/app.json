@@ -21,7 +21,14 @@
           "clientId": "54501952",
           "clientSecret": "neJqXQfaR9PBh68sYr9k"
         }
-      ]
+      ],
+      [
+        "./plugins/withYandexSDK",
+        {
+          "clientId": "53af4a5707a442c59b0d251f83401de1"
+        }
+      ],
+      "./plugins/withCleartextHttp"
     ]
   }
 }

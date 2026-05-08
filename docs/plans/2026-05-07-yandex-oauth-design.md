@@ -1,8 +1,15 @@
 # Yandex OAuth Native SDK — Design
 
 **Date:** 2026-05-07
-**Status:** Approved, ready for implementation plan
+**Status:** ✅ Executed 2026-05-08. Android end-to-end verified on a release APK; iOS code present and hardened (see implementation guide §7) but still needs an EAS / Xcode build to compile-verify. **For the *as-built* state and deviations from this design, read [2026-05-08-yandex-oauth-summary.md](./2026-05-08-yandex-oauth-summary.md) first** — this doc captures the original design rationale and is preserved as historical record.
 **Target codebase:** `/app-sdk` (Expo custom dev build) + `/server` (Node/Express)
+
+> **Notable design assumptions that didn't survive contact with the SDK** (full list in the summary):
+> - `YandexAuthOptions(Context, clientId)` was wrong — actual SDK 3.2.0 constructor is `(Context, Boolean isLoggingEnabled)`; clientId is read from manifest meta-data.
+> - Plugin `withAndroidManifest` + `addMetaDataItemToMainApplication` causes a manifest-merger collision; `manifestPlaceholders["YANDEX_CLIENT_ID"]` via `withAppBuildGradle` is the correct shape.
+> - `ActivityResultLauncher.register()` had to move from module `OnCreate` to lazy registration inside `authorize()`.
+> - A `withCleartextHttp` plugin was added (not in this design) to unblock release-APK fetches to the LAN HTTP dev server.
+> - User schema migration rippled into three client files (`api.ts`, `useAuth.ts`, `home.tsx`) the design didn't list.
 
 ## Goal
 

@@ -1,0 +1,10 @@
+{
+  "platforms": ["android", "ios"],
+  "android": {
+    "modules": ["expo.modules.yandexsdk.ExpoYandexSDKModule"]
+  },
+  "ios": {
+    "modules": ["ExpoYandexSDKModule"],
+    "appDelegateSubscribers": ["ExpoYandexSDKAppDelegate"]
+  }
+}

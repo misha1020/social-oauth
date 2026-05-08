@@ -59,7 +59,8 @@ async function fetchUserProfile(accessToken, clientId, deviceId) {
 
   const user = data.user;
   return {
-    vkId: parseInt(user.user_id, 10),
+    provider: 'vk',
+    providerId: String(user.user_id),
     firstName: user.first_name,
     lastName: user.last_name
   };

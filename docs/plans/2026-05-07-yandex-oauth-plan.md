@@ -1,5 +1,9 @@
 # Yandex OAuth Implementation Plan
 
+> **Status:** ✅ Executed 2026-05-08. All 21 tasks complete. Several code blocks below diverged from the as-built result — the SDK's actual API surface differed from plan-time research and forced runtime fixes. **Before treating any specific code block here as authoritative, cross-check with [2026-05-08-yandex-oauth-summary.md](./2026-05-08-yandex-oauth-summary.md) (deviations table) and the live source.** This file is preserved as the historical task ledger; do not re-execute.
+>
+> **iOS update 2026-05-08 (post-execution):** The Swift module from Task 12 has been hardened — scene-aware window lookup replaces the deprecated `UIApplication.shared.windows.first`, and a new `ExpoYandexSDKAppDelegate.swift` (registered via `appDelegateSubscribers` in `expo-module.config.json`) handles the `yx<clientId>://` callback URL via `YXLoginSDK.handleOpen` / `processUserActivity`. Podspec now pins `'YandexLoginSDK', '~> 2.0'` with a comment about verifying the spec source. Still untested on device — see implementation guide §7.5 for the first-build checklist.
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Add native Yandex ID SDK login to `/app-sdk` (opens an installed Yandex app for SSO) with backend exchange in `/server` mirroring the existing VK SDK pattern.

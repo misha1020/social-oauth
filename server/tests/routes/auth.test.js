@@ -40,7 +40,12 @@ afterAll(() => {
 describe('POST /auth/vk/exchange', () => {
   test('returns JWT token on valid code exchange', async () => {
     exchangeCode.mockResolvedValue({ accessToken: 'vk-token', userId: 12345, idToken: null });
-    fetchUserProfile.mockResolvedValue({ vkId: 12345, firstName: 'Ivan', lastName: 'Petrov' });
+    fetchUserProfile.mockResolvedValue({
+      provider: 'vk',
+      providerId: '12345',
+      firstName: 'Ivan',
+      lastName: 'Petrov',
+    });
 
     const app = createApp();
     const res = await request(app).post('/auth/vk/exchange').send({
@@ -52,7 +57,8 @@ describe('POST /auth/vk/exchange', () => {
     expect(res.status).toBe(200);
     expect(res.body.token).toBeDefined();
     const payload = jwt.verify(res.body.token, JWT_SECRET);
-    expect(payload.vkId).toBe(12345);
+    expect(payload.provider).toBe('vk');
+    expect(payload.providerId).toBe('12345');
   });
 
   test('returns 400 when fields are missing', async () => {
@@ -80,7 +86,12 @@ describe('POST /auth/vk/exchange', () => {
 describe('GET /auth/me', () => {
   test('returns user for valid token', async () => {
     exchangeCode.mockResolvedValue({ accessToken: 'vk-token', userId: 12345, idToken: null });
-    fetchUserProfile.mockResolvedValue({ vkId: 12345, firstName: 'Ivan', lastName: 'Petrov' });
+    fetchUserProfile.mockResolvedValue({
+      provider: 'vk',
+      providerId: '12345',
+      firstName: 'Ivan',
+      lastName: 'Petrov',
+    });
 
     const app = createApp();
     const exchangeRes = await request(app).post('/auth/vk/exchange').send({
@@ -95,7 +106,11 @@ describe('GET /auth/me', () => {
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.user).toMatchObject({ vkId: 12345, firstName: 'Ivan' });
+    expect(res.body.user).toMatchObject({
+      provider: 'vk',
+      providerId: '12345',
+      firstName: 'Ivan',
+    });
   });
 
   test('returns 401 for missing token', async () => {

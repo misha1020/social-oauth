@@ -72,7 +72,12 @@ describe('vk service', () => {
       });
 
       const profile = await fetchUserProfile('vk-access-token', '54501952', 'device-123');
-      expect(profile).toEqual({ vkId: 12345, firstName: 'Ivan', lastName: 'Petrov' });
+      expect(profile).toEqual({
+        provider: 'vk',
+        providerId: '12345',
+        firstName: 'Ivan',
+        lastName: 'Petrov',
+      });
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining('https://id.vk.ru/oauth2/user_info'),
         expect.objectContaining({ method: 'POST' })

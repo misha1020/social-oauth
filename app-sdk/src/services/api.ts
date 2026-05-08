@@ -3,9 +3,12 @@ import { API_URL } from "../config";
 interface MeResponse {
   user: {
     id: string;
-    vkId: number;
+    provider: string;
+    providerId: string;
     firstName: string;
     lastName: string;
+    email?: string;
+    avatarId?: string;
   };
 }
 
@@ -39,6 +42,29 @@ export async function exchangeVKCode(
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error((body as any).error || "Token exchange failed");
+  }
+
+  return res.json();
+}
+
+export async function exchangeYandexToken(params: {
+  accessToken: string;
+}): Promise<{ token: string }> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  const res = await fetch(`${API_URL}/auth/yandex/exchange`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ access_token: params.accessToken }),
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timeout));
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(
+      (body as any).message || (body as any).error || "Yandex exchange failed"
+    );
   }
 
   return res.json();
