@@ -1,83 +1,27 @@
-const { fetchUserProfile } = require('../../src/services/yandex');
+const jwt = require('jsonwebtoken');
+const { verifyYandexJwt } = require('../../src/services/yandex');
 
-global.fetch = jest.fn();
+describe('verifyYandexJwt', () => {
+  const secret = 'test-secret-utf8';
 
-beforeEach(() => {
-  fetch.mockReset();
-});
+  test('verifies an HS256 token signed with the utf8 secret', () => {
+    const token = jwt.sign({ uid: '123', first_name: 'Ann' }, secret, { algorithm: 'HS256' });
+    const { claims, keyEncoding } = verifyYandexJwt(token, secret);
+    expect(keyEncoding).toBe('utf8');
+    expect(claims.uid).toBe('123');
+    expect(claims.first_name).toBe('Ann');
+  });
 
-describe('yandex service', () => {
-  describe('fetchUserProfile', () => {
-    test('GETs login.yandex.ru/info with OAuth header and returns mapped profile', async () => {
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          id: '1000034426',
-          login: 'ivan',
-          default_email: 'ivan@yandex.ru',
-          default_avatar_id: '131652443',
-          first_name: 'Ivan',
-          last_name: 'Petrov',
-          display_name: 'ivan',
-        }),
-      });
+  test('throws yandex_jwt_invalid for a token signed with the wrong key', () => {
+    const token = jwt.sign({ uid: '123' }, 'a-completely-different-secret', { algorithm: 'HS256' });
+    expect(() => verifyYandexJwt(token, secret)).toThrow(/yandex_jwt_invalid/);
+  });
 
-      const result = await fetchUserProfile('access-token-xyz');
-
-      expect(fetch).toHaveBeenCalledWith(
-        'https://login.yandex.ru/info?format=json',
-        expect.objectContaining({
-          method: 'GET',
-          headers: expect.objectContaining({
-            Authorization: 'OAuth access-token-xyz',
-          }),
-        })
-      );
-      expect(result).toEqual({
-        provider: 'yandex',
-        providerId: '1000034426',
-        firstName: 'Ivan',
-        lastName: 'Petrov',
-        email: 'ivan@yandex.ru',
-        avatarId: '131652443',
-      });
-    });
-
-    test('omits email/avatarId when not granted in scopes', async () => {
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          id: '1000034426',
-          login: 'ivan',
-          first_name: 'Ivan',
-          last_name: 'Petrov',
-        }),
-      });
-
-      const result = await fetchUserProfile('token');
-      expect(result).toMatchObject({
-        provider: 'yandex',
-        providerId: '1000034426',
-        firstName: 'Ivan',
-        lastName: 'Petrov',
-      });
-      expect(result.email).toBeUndefined();
-      expect(result.avatarId).toBeUndefined();
-    });
-
-    test('throws yandex_token_invalid on 401 response', async () => {
-      fetch.mockResolvedValueOnce({
-        ok: false,
-        status: 401,
-        json: async () => ({ error: 'invalid_token' }),
-      });
-
-      await expect(fetchUserProfile('bad-token')).rejects.toThrow(/yandex_token_invalid/);
-    });
-
-    test('throws yandex_unreachable on network error', async () => {
-      fetch.mockRejectedValueOnce(new Error('ENOTFOUND'));
-      await expect(fetchUserProfile('token')).rejects.toThrow(/yandex_unreachable/);
-    });
+  test('rejects an alg:none token (alg-confusion guard)', () => {
+    // jsonwebtoken refuses to sign with 'none', so build the unsigned token by hand.
+    const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url');
+    const payload = Buffer.from(JSON.stringify({ uid: '123' })).toString('base64url');
+    const unsignedToken = `${header}.${payload}.`;
+    expect(() => verifyYandexJwt(unsignedToken, secret)).toThrow(/yandex_jwt_invalid/);
   });
 });

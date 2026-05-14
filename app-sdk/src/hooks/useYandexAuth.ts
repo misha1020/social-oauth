@@ -7,11 +7,13 @@ export interface YandexAuthResult {
 }
 
 // Same call the native SDK's getJwt() makes internally:
-// GET login.yandex.ru/info?format=jwt&oauth_token=<token>  -> response body IS the JWT string.
+// GET login.yandex.ru/info?format=jwt  -> response body IS the JWT string.
+// Token goes in the Authorization header (not the ?oauth_token= query param) so it
+// can't leak into URL/access logs. Yandex's /info endpoint accepts both forms.
 async function fetchYandexJwt(accessToken: string): Promise<string> {
-  const res = await fetch(
-    `https://login.yandex.ru/info?format=jwt&oauth_token=${encodeURIComponent(accessToken)}`
-  );
+  const res = await fetch("https://login.yandex.ru/info?format=jwt", {
+    headers: { Authorization: `OAuth ${accessToken}` },
+  });
   const body = await res.text();
   if (!res.ok) {
     throw new Error(`yandex /info?format=jwt failed: ${res.status} ${body}`);

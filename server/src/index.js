@@ -36,7 +36,6 @@ app.use('/auth', createAuthRoutes({
   jwtSecret: process.env.JWT_SECRET,
   vkAppId: process.env.VK_APP_ID,
   vkAppSecret: process.env.VK_APP_SECRET,
-  yandexAppId: process.env.YANDEX_CLIENT_ID,
   yandexClientSecret: process.env.YANDEX_CLIENT_SECRET,
   usersFile,
 }));

@@ -1,9 +1,16 @@
 # Yandex JWT Auth Flow — Design (Approach B)
 
 **Date:** 2026-05-14
-**Status:** Approved, ready for implementation plan
+**Status:** Implemented and verified on-device. The old raw access-token flow was **removed**
+2026-05-14 — JWT is now the **sole** Yandex path, not one of two. See
+`docs/active-task/2026-05-14-remove-yandex-access-token-flow.md`.
 **Companion:** `docs/yandex-jwt-flow-test-implementation.md` (detailed implementation guide),
 `docs/yandex-sdk-implementation-guide.md` (the working raw-access-token flow)
+
+> **Superseded note (2026-05-14):** this doc was written when the plan deliberately kept both
+> routes side by side. After the JWT flow verified on-device, the "keep both routes" / "fallback"
+> decisions were intentionally reversed — `/yandex/exchange`, `exchangeYandexToken`, and
+> `fetchUserProfile` have been deleted. Inline notes mark each affected spot below.
 
 ## Problem
 
@@ -59,9 +66,9 @@ AFTER:   authorize() → accessToken
 
 - **Approach B only.** Approach A (native Kotlin `getJwt()` + APK rebuild) is out of scope;
   planned later, once B confirms verification works.
-- **Keep both routes.** `/yandex/exchange` + `exchangeYandexToken` stay untouched alongside
-  the new JWT path. Only `useYandexAuth` switches to the JWT path. This allows A/B comparison
-  and makes rollback a one-line revert.
+- ~~**Keep both routes.**~~ *(Superseded 2026-05-14: `/yandex/exchange` + `exchangeYandexToken`
+  were kept during the spike for A/B comparison and one-line rollback, then **removed** once the
+  JWT flow verified on-device. JWT is the only Yandex path now.)*
 - **Include a unit test** for `verifyYandexJwt` (it is a pure function).
 - **Keep the `_debug` echo** in the route response — this is a test app, and echoing
   `{ keyEncoding, claims }` lets the result be read on-device. It would be stripped before any
@@ -108,7 +115,8 @@ No native module change, no `expo prebuild`.
 - No key encoding verifies the signature → **401** `yandex_jwt_invalid`, message lists each
   encoding's failure reason
 - `/info?format=jwt` returns non-200 → hook throws with status + response body
-- The old `/yandex/exchange` route and `exchangeYandexToken` remain as a working fallback
+- ~~The old `/yandex/exchange` route and `exchangeYandexToken` remain as a working fallback~~
+  *(Superseded 2026-05-14: both were removed — there is no longer a fallback path.)*
 
 ## Testing
 
@@ -134,7 +142,9 @@ No native module change, no `expo prebuild`.
 ## Out of scope
 
 - Approach A (native `getJwt()` in Kotlin, types update, APK rebuild) — separate later plan.
-- Removing the old `/yandex/exchange` route — kept deliberately as fallback / A-B comparison.
+- ~~Removing the old `/yandex/exchange` route — kept deliberately as fallback / A-B comparison.~~
+  *(Superseded 2026-05-14: it **was** removed — see
+  `docs/active-task/2026-05-14-remove-yandex-access-token-flow.md`.)*
 - Any change to the VK flow.
 - Carrying findings into the real AM app — this test app uses its own Yandex
   `client_id`/`client_secret`; findings transfer in *shape* (does verification work, which

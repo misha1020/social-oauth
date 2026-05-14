@@ -47,29 +47,6 @@ export async function exchangeVKCode(
   return res.json();
 }
 
-export async function exchangeYandexToken(params: {
-  accessToken: string;
-}): Promise<{ token: string }> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
-
-  const res = await fetch(`${API_URL}/auth/yandex/exchange`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ access_token: params.accessToken }),
-    signal: controller.signal,
-  }).finally(() => clearTimeout(timeout));
-
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(
-      (body as any).message || (body as any).error || "Yandex exchange failed"
-    );
-  }
-
-  return res.json();
-}
-
 export async function exchangeYandexJwt(params: {
   jwt: string;
 }): Promise<{ token: string; _debug?: any }> {

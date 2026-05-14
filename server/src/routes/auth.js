@@ -1,13 +1,12 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const { exchangeCode, fetchUserProfile: fetchVKUserProfile } = require('../services/vk');
-const { fetchUserProfile: fetchYandexUserProfile, verifyYandexJwt } = require('../services/yandex');
+const { verifyYandexJwt } = require('../services/yandex');
 const { findById, createUser } = require('../services/users');
 const { createAuthMiddleware } = require('../middleware/auth');
 
 // vkAppSecret accepted for caller compatibility; not used — PKCE replaces client_secret in VK ID OAuth 2.1
-// yandexAppId is plumbed for future client-side asserts; token validation uses the bearer token alone
-function createAuthRoutes({ jwtSecret, vkAppId, vkAppSecret, yandexAppId, yandexClientSecret, usersFile }) {
+function createAuthRoutes({ jwtSecret, vkAppId, vkAppSecret, yandexClientSecret, usersFile }) {
   const router = express.Router();
   const authMiddleware = createAuthMiddleware(jwtSecret);
 
@@ -45,39 +44,6 @@ function createAuthRoutes({ jwtSecret, vkAppId, vkAppSecret, yandexAppId, yandex
         error: 'vk_exchange_failed',
         message: err.message || 'VK token exchange failed',
       });
-    }
-  });
-
-  router.post('/yandex/exchange', async (req, res) => {
-    const { access_token: accessToken } = req.body;
-
-    if (!accessToken) {
-      return res.status(400).json({
-        error: 'missing_fields',
-        message: 'access_token is required',
-      });
-    }
-
-    try {
-      const profile = await fetchYandexUserProfile(accessToken);
-      const user = createUser(profile, usersFile);
-
-      const token = jwt.sign(
-        { userId: user.id, provider: user.provider, providerId: user.providerId },
-        jwtSecret,
-        { expiresIn: '7d' }
-      );
-
-      return res.json({ token });
-    } catch (err) {
-      const msg = err.message || '';
-      if (msg.startsWith('yandex_token_invalid')) {
-        return res.status(401).json({ error: 'yandex_token_invalid', message: msg });
-      }
-      if (msg.startsWith('yandex_unreachable')) {
-        return res.status(502).json({ error: 'yandex_unreachable', message: msg });
-      }
-      return res.status(500).json({ error: 'internal_error', message: msg });
     }
   });
 
