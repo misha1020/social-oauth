@@ -52,9 +52,19 @@ extension ExpoYandexSDKModule: YXLoginSDKObserver {
     pendingPromise = nil
     switch result {
     case .success(let r):
+      // Approach A: the iOS SDK delivers the Yandex-signed JWT *directly* in the login
+      // result — there is no separate getJwt() call and no worker thread needed (unlike
+      // Android, where getJwt() is a blocking network call). Yandex's iOS docs show both
+      // `result.token` and `result.jwt` populated on the same callback.
+      //
+      // UNVERIFIED until the first real iOS build: the exact `jwt` property name and
+      // whether it is `String` or `String?`. If the SDK exposes it as optional, guard the
+      // nil case and reject — do NOT resolve with an empty string (the backend would then
+      // reject a `""` JWT). Confirm against the YandexLoginSDK version pinned in the podspec.
       promise.resolve([
         "accessToken": r.token,
-        "expiresIn": r.expiresIn ?? 0
+        "expiresIn": r.expiresIn ?? 0,
+        "jwt": r.jwt
       ])
     case .failure(let err):
       let nsErr = err as NSError

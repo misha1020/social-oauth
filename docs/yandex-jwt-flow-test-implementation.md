@@ -5,6 +5,19 @@ auth flow yourself before committing to it in the real AM app.
 
 **Companion to:** `yandex-sdk-implementation-guide.md` (the working raw-access-token flow).
 
+> **Status (2026-05-14): spike complete — both approaches implemented and verified on-device.**
+> - **Approach B** (JS-side JWT fetch) — verified first, then hardened to send the access token
+>   in the `Authorization: OAuth` header instead of the `?oauth_token=` query param.
+> - **Approach A** (native `getJwt()`) — implemented in the Kotlin module and verified
+>   on-device immediately after; it produces a JWT that verifies identically. **The test app
+>   now ships Approach A.**
+> - The old raw **access-token** flow (`/auth/yandex/exchange`, `exchangeYandexToken`,
+>   `fetchUserProfile`) has since been **removed** — JWT is the sole Yandex path. The
+>   "keep both flows" notes further down are historical (see
+>   `docs/active-task/2026-05-14-remove-yandex-access-token-flow.md`).
+> - **Production port specs:** `docs/main-app-yandex-jwt-backend.md` +
+>   `docs/main-app-yandex-jwt-mobile.md`.
+
 ## What this tests, and why
 
 Today the test app sends the raw Yandex **access token** to the backend, which calls
@@ -297,7 +310,11 @@ Approach B changes **only JS + server**:
 
 ---
 
-# Approach A — native `getJwt()` (production shape, do after B works)
+# Approach A — native `getJwt()` (production shape)
+
+> **✅ Implemented and verified on-device 2026-05-14.** A1–A4 below are the spike write-up. The
+> shipped Kotlin replaced the silent `?: ""` JWT fallback in A1 with an explicit null-check that
+> rejects honestly — see the as-built code in `docs/main-app-yandex-jwt-mobile.md §2`.
 
 This is what the real AM app will ship. It requires a Kotlin change + APK rebuild.
 
@@ -383,8 +400,10 @@ section 8).
 
 # Notes
 
-- **Keep the old `/yandex/exchange` route and `exchangeYandexToken`** — leaving both flows in
-  place lets you A/B them. Only the hook switches to the JWT path.
+- ~~**Keep the old `/yandex/exchange` route and `exchangeYandexToken`**~~ *(Historical: both
+  flows were kept during the spike for A/B comparison, then the access-token flow was removed
+  once Approach A verified — JWT is now the only Yandex path. See
+  `docs/active-task/2026-05-14-remove-yandex-access-token-flow.md`.)*
 - The JWT's `exp` is short-ish; test with a fresh login, not a stale token.
 - `/info?format=jwt` returns the JWT as a plain-text body — that's why the hook uses
   `res.text()`, not `res.json()`.

@@ -45,12 +45,28 @@ class ExpoYandexSDKModule : Module() {
         ) { result ->
             when (result) {
                 is YandexAuthResult.Success -> {
-                    resolvePending(
-                        mapOf(
-                            "accessToken" to result.token.value,
-                            "expiresIn" to result.token.expiresIn
-                        )
-                    )
+                    val token = result.token
+                    val activeSdk = sdk
+                    // getJwt() makes a blocking network call to login.yandex.ru/info?format=jwt
+                    // — it must NOT run on this result callback (the main thread). Off-thread it.
+                    Thread {
+                        if (activeSdk == null) {
+                            rejectPending("Yandex SDK not initialised — cannot fetch JWT")
+                        } else {
+                            try {
+                                val jwt = activeSdk.getJwt(token)
+                                resolvePending(
+                                    mapOf(
+                                        "accessToken" to token.value,
+                                        "expiresIn" to token.expiresIn,
+                                        "jwt" to jwt
+                                    )
+                                )
+                            } catch (e: Exception) {
+                                rejectPending("getJwt failed: ${e.message}")
+                            }
+                        }
+                    }.start()
                 }
                 is YandexAuthResult.Cancelled -> {
                     resolvePending(mapOf("cancelled" to true))

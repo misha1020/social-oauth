@@ -18,9 +18,13 @@ Pod::Spec.new do |s|
   #   - Some are only on Yandex's private podspec repo (check the official iOS SDK docs
   #     and add the corresponding `source '...'` line to the host app's Podfile if needed).
   # If `pod install` fails to resolve YandexLoginSDK, the source line is the first thing to fix.
-  # The version below is a placeholder — pin to whatever the docs list as current and verify
-  # API parity with this module's Swift code (handleOpen, processUserActivity, authorize, ...).
-  s.dependency 'YandexLoginSDK', '~> 2.0'
+  #
+  # Pinned to 3.x: Yandex's current iOS SDK is 3.0.0, and the JWT-in-login-result API this
+  # module relies on (`result.jwt`, Approach A) is documented from 2.1.0 onward — 3.x has it.
+  # Still treat this as a to-confirm placeholder at first iOS build: verify API parity with
+  # this module's Swift code (handleOpen, processUserActivity, authorize, the YXLoginResult
+  # shape, and that `result.jwt` exists and is non-optional).
+  s.dependency 'YandexLoginSDK', '~> 3.0'
 
   s.swift_version  = '5.4'
   s.source_files = "**/*.{h,m,swift}"

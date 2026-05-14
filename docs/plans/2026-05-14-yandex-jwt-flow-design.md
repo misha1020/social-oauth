@@ -10,7 +10,10 @@
 > **Superseded note (2026-05-14):** this doc was written when the plan deliberately kept both
 > routes side by side. After the JWT flow verified on-device, the "keep both routes" / "fallback"
 > decisions were intentionally reversed — `/yandex/exchange`, `exchangeYandexToken`, and
-> `fetchUserProfile` have been deleted. Inline notes mark each affected spot below.
+> `fetchUserProfile` have been deleted. Also: Approach A (native `getJwt()`), listed below as
+> out-of-scope / "planned later", was implemented and verified on-device the same day — the test
+> app ships it. Inline notes mark each affected spot below. Production port:
+> `docs/main-app-yandex-jwt-{backend,mobile}.md`.
 
 ## Problem
 
@@ -64,8 +67,9 @@ AFTER:   authorize() → accessToken
 
 ## Scope decisions
 
-- **Approach B only.** Approach A (native Kotlin `getJwt()` + APK rebuild) is out of scope;
-  planned later, once B confirms verification works.
+- **Approach B only.** ~~Approach A (native Kotlin `getJwt()` + APK rebuild) is out of scope;
+  planned later, once B confirms verification works.~~ *(Superseded 2026-05-14: Approach A was
+  implemented and verified on-device right after B confirmed. The test app ships Approach A.)*
 - ~~**Keep both routes.**~~ *(Superseded 2026-05-14: `/yandex/exchange` + `exchangeYandexToken`
   were kept during the spike for A/B comparison and one-line rollback, then **removed** once the
   JWT flow verified on-device. JWT is the only Yandex path now.)*
@@ -141,7 +145,9 @@ No native module change, no `expo prebuild`.
 
 ## Out of scope
 
-- Approach A (native `getJwt()` in Kotlin, types update, APK rebuild) — separate later plan.
+- ~~Approach A (native `getJwt()` in Kotlin, types update, APK rebuild) — separate later plan.~~
+  *(Superseded 2026-05-14: Approach A was implemented and verified on-device. As-built code is
+  in `docs/main-app-yandex-jwt-mobile.md §2`.)*
 - ~~Removing the old `/yandex/exchange` route — kept deliberately as fallback / A-B comparison.~~
   *(Superseded 2026-05-14: it **was** removed — see
   `docs/active-task/2026-05-14-remove-yandex-access-token-flow.md`.)*

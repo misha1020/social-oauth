@@ -6,21 +6,6 @@ export interface YandexAuthResult {
   token: string;
 }
 
-// Same call the native SDK's getJwt() makes internally:
-// GET login.yandex.ru/info?format=jwt  -> response body IS the JWT string.
-// Token goes in the Authorization header (not the ?oauth_token= query param) so it
-// can't leak into URL/access logs. Yandex's /info endpoint accepts both forms.
-async function fetchYandexJwt(accessToken: string): Promise<string> {
-  const res = await fetch("https://login.yandex.ru/info?format=jwt", {
-    headers: { Authorization: `OAuth ${accessToken}` },
-  });
-  const body = await res.text();
-  if (!res.ok) {
-    throw new Error(`yandex /info?format=jwt failed: ${res.status} ${body}`);
-  }
-  return body.trim();
-}
-
 export function useYandexAuth(onSuccess: (result: YandexAuthResult) => void) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,12 +22,12 @@ export function useYandexAuth(onSuccess: (result: YandexAuthResult) => void) {
         return;
       }
 
-      // 1. exchange the access token for a Yandex-signed JWT
-      const yandexJwt = await fetchYandexJwt(result.accessToken);
-      console.log("[yandex] JWT:", yandexJwt); // copy from logs to verify offline if needed
+      // The native module already fetched the Yandex-signed JWT via the SDK's getJwt()
+      // (Approach A) — the raw access token never enters JS.
+      console.log("[yandex] JWT:", result.jwt); // copy from logs to verify offline if needed
 
-      // 2. send the JWT to our backend, which verifies the HS256 signature with client_secret
-      const { token } = await exchangeYandexJwt({ jwt: yandexJwt });
+      // Send the JWT to our backend, which verifies the HS256 signature with client_secret.
+      const { token } = await exchangeYandexJwt({ jwt: result.jwt });
       onSuccessRef.current({ token });
     } catch (err: any) {
       setError(err.message || "Yandex authentication failed");
