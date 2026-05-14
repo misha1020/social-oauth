@@ -70,6 +70,29 @@ export async function exchangeYandexToken(params: {
   return res.json();
 }
 
+export async function exchangeYandexJwt(params: {
+  jwt: string;
+}): Promise<{ token: string; _debug?: any }> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  const res = await fetch(`${API_URL}/auth/yandex/exchange-jwt`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jwt: params.jwt }),
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timeout));
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(
+      (body as any).message || (body as any).error || "Yandex JWT exchange failed"
+    );
+  }
+
+  return res.json();
+}
+
 export async function getMe(token: string): Promise<MeResponse> {
   const res = await fetch(`${API_URL}/auth/me`, {
     headers: { Authorization: `Bearer ${token}` },

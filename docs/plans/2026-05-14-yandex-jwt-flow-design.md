@@ -139,3 +139,31 @@ No native module change, no `expo prebuild`.
 - Carrying findings into the real AM app — this test app uses its own Yandex
   `client_id`/`client_secret`; findings transfer in *shape* (does verification work, which
   encoding, which claims), not in literal values.
+
+## Findings — live run 2026-05-14
+
+The spike's core unknowns are resolved. A live Yandex login through the release APK produced
+`[yandex-jwt] VERIFIED` on the server.
+
+**Key encoding: `utf8`.** The `/info?format=jwt` token is HS256-signed with the app's
+`client_secret` used **directly as a UTF-8 string** — not base64- or hex-decoded. The real AM
+backend must use the same: `jwt.verify(token, clientSecret, { algorithms: ['HS256'] })`.
+
+**Claim set** (12 claims; values are this test account's and are not recorded here):
+
+| Claim | Notes |
+|---|---|
+| `uid` | numeric user id → `providerId` |
+| `login` | Yandex login handle |
+| `name` | **full** name in one string — there is **no** `first_name`/`last_name` pair |
+| `display_name` | short display form (e.g. "Имя Ф.") |
+| `email` | primary email — claim is `email`, **not** `default_email` |
+| `avatar_id` | avatar id — claim is `avatar_id`, **not** `default_avatar_id` |
+| `gender` | e.g. `male` |
+| `psuid` | per-service user id |
+| `iss` | `login.yandex.ru` |
+| `iat` / `exp` / `jti` | standard JWT registered claims; `exp` is long-lived |
+
+**Mapping consequence:** the `/yandex/exchange-jwt` route splits `name` on whitespace into
+`firstName` / `lastName` (the JWT carries no separate name parts), and reads `email` /
+`avatar_id` directly. `iss` is `login.yandex.ru` and could be asserted as an extra guard.
