@@ -1,5 +1,5 @@
 {
-  "name": "vk-oauth-server",
+  "name": "social-oauth-server",
   "version": "1.0.0",
   "scripts": {
     "start": "node src/index.js",

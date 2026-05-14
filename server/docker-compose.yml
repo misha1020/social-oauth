@@ -1,5 +1,5 @@
 services:
-  vk-oauth-server:
+  social-oauth-server:
     build: .
     ports:
       - "5173:5173"

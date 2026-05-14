@@ -1,4 +1,10 @@
-import { View, Text, Pressable, StyleSheet, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  ActivityIndicator
+} from "react-native";
 import { useVKSDKAuth } from "../src/hooks/useVKSDKAuth";
 import { useYandexAuth } from "../src/hooks/useYandexAuth";
 import { useAuth } from "../src/hooks/useAuth";
@@ -11,7 +17,7 @@ export default function LoginScreen() {
     promptAsync,
     isLoading: vkLoading,
     isReady,
-    error: vkError,
+    error: vkError
   } = useVKSDKAuth(async ({ token }) => {
     await login({ token });
     router.replace("/home");
@@ -19,7 +25,7 @@ export default function LoginScreen() {
   const {
     authorize: yandexAuthorize,
     isLoading: yandexLoading,
-    error: yandexError,
+    error: yandexError
   } = useYandexAuth(async ({ token }) => {
     await login({ token });
     router.replace("/home");
@@ -30,12 +36,17 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>VK OAuth SDK Demo v{buildVersion.build}</Text>
+      <Text style={styles.title}>
+        Social OAuth SDK Demo v{buildVersion.build}
+      </Text>
 
       {error && <Text style={styles.error}>{error}</Text>}
 
       <Pressable
-        style={[styles.button, (!isReady || isLoading) && styles.buttonDisabled]}
+        style={[
+          styles.button,
+          (!isReady || isLoading) && styles.buttonDisabled
+        ]}
         onPress={() => promptAsync()}
         disabled={!isReady || isLoading}
       >
@@ -67,12 +78,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#f5f5f5"
   },
   title: {
     fontSize: 24,
     fontWeight: "bold",
-    marginBottom: 40,
+    marginBottom: 40
   },
   button: {
     backgroundColor: "#4680C2",
@@ -80,7 +91,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 8,
     minWidth: 200,
-    alignItems: "center",
+    alignItems: "center"
   },
   yandexButton: {
     backgroundColor: "#FC3F1D",
@@ -89,19 +100,19 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     minWidth: 200,
     alignItems: "center",
-    marginTop: 12,
+    marginTop: 12
   },
   buttonDisabled: {
-    opacity: 0.6,
+    opacity: 0.6
   },
   buttonText: {
     color: "#fff",
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "600"
   },
   error: {
     color: "red",
     marginBottom: 16,
-    textAlign: "center",
-  },
+    textAlign: "center"
+  }
 });
